@@ -1,6 +1,6 @@
 # xiniubot 搜索引擎
 
-xiniubot 是一个自建垂直搜索引擎：异步爬虫采集 → 中文分词 → 索引构建 → 全文检索 → 可视化后台管理，开箱即用，支持 Docker 一键部署，并内置 **Meilisearch 双后端**（自研索引 / 专业搜索内核）。
+xiniubot 是一个自建垂直搜索引擎：异步爬虫采集 → 中文分词 → 索引构建 → 全文检索 → 可视化后台管理，开箱即用。**一个 Docker 镜像即完整系统**（内置 Meilisearch），支持双后端切换（自研索引 / Meilisearch）。
 
 ## ✨ 功能特性
 
@@ -9,7 +9,7 @@ xiniubot 是一个自建垂直搜索引擎：异步爬虫采集 → 中文分词
 - **检索与排序**：BM25 + 标题/描述/正文字段加权 + 权威分融合 + 时间衰减；搜索建议（suggest）与拼写纠错（correct）
 - **高级查询语法**：`"精确短语"`、`-排除词`、`A OR B`、`site:域名`、`intitle:词`、`inurl:串`，local 与 meili 双后端均有等价实现
 - **可视化管理后台**：登录 + CSRF 防护；仪表盘（实时抓取趋势）、爬虫控制、种子管理、队列监控、索引管理（含权威分重建）、任务历史、系统日志
-- **双后端可切换**：`local`（自研 pickle 倒排索引）/ `meili`（Meilisearch，官方镜像内置 Jieba 中文分词，无需额外配置），通过环境变量一键切换，全链路自动跟随
+- **单镜像开箱即用**：镜像内置 Meilisearch 进程，`docker compose up` 或单个 `docker run` 即完整系统，零外部依赖、零手动配置
 
 ## 🧱 技术栈
 
@@ -26,11 +26,11 @@ xiniubot/
 ├── search_server.py  # 搜索 Web 服务（默认端口 5050）
 ├── main.py           # 爬虫命令行入口（支持断点续爬）
 ├── tests/            # 回归测试：双后端 / 专业对齐 / 后台全链路
-├── Dockerfile / docker-compose.yml / entrypoint.sh
-└── .github/workflows/docker-build.yml   # CI：测试 + 构建并推送 ghcr.io 镜像
+├── Dockerfile / docker-compose.yml / entrypoint.sh   # 单镜像：内置 Meilisearch
+└── .github/workflows/docker-build.yml   # CI：测试 + 多架构构建并推送 ghcr.io 镜像
 ```
 
-## 🚀 Docker 快速启动
+## 🚀 Docker 快速启动（一个镜像即完整系统）
 
 ```bash
 # 可选：设置 Meilisearch 主密钥（生产环境务必修改）
@@ -45,15 +45,27 @@ docker compose up -d --build
 | --- | --- | --- |
 | 搜索首页 | http://localhost:5050 | 全文搜索 |
 | 管理后台 | http://localhost:8081/admin | 爬虫配置 / 任务 / 索引管理（首次启动打印随机管理密码） |
-| Meilisearch | http://localhost:7700 | Meilisearch 管理面板（可选） |
+| 内置 Meilisearch | http://localhost:7700 | Meilisearch 管理面板（可选） |
 
-## ⚙️ 环境变量
+### 只用 docker run（零依赖）
+
+```bash
+docker run -d --name xiniubot \
+  -p 5050:5050 -p 8081:8081 -p 7700:7700 \
+  -v xiniubot_data:/app/data \
+  ghcr.io/<owner>/<repo>:latest
+```
+
+不设任何环境变量也能跑：容器内默认启用 `meili` 后端、默认 master key、数据落在 `/app/data`。
+
+## ⚙️ 环境变量（全部可选，均有默认值）
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `XINIU_SEARCH_BACKEND` | `local` | 搜索后端：`local`（自研索引）/ `meili`（Meilisearch） |
-| `MEILI_HOST` | `http://127.0.0.1:7700` | Meilisearch 地址（compose 内为 `http://meilisearch:7700`） |
-| `MEILI_MASTER_KEY` | 空 | Meilisearch 主密钥（需与 meilisearch 容器一致） |
+| `XINIU_SEARCH_BACKEND` | `meili`（容器内） | 搜索后端：`local`（自研索引）/ `meili`（内置 Meilisearch） |
+| `MEILI_HOST` | `http://127.0.0.1:7700` | 内置 Meilisearch 地址（同容器内无需改） |
+| `MEILI_MASTER_KEY` | `xiniubot-change-me-master-key` | Meilisearch 主密钥，生产建议通过 `.env` 覆盖 |
+| `MEILI_DB_PATH` | `/app/data/meili_data` | 内置 Meilisearch 数据目录 |
 | `MEILI_INDEX` | `pages` | Meilisearch 索引名 |
 
 ## 🧪 测试
@@ -64,7 +76,7 @@ python tests/test_pro_alignment.py   # 专业对齐回归测试
 python tests/test_admin.py           # 管理后台全链路测试
 ```
 
-推送到 `main`/`master` 或打 `v*` tag 即触发 GitHub Actions：先跑语法检查 + 双后端测试，通过后自动构建 `linux/amd64`、`linux/arm64` 镜像并推送至 `ghcr.io/<owner>/<repo>:latest`。
+推送到 `main`/`master` 或打 `v*` tag 即触发 GitHub Actions：先跑语法检查 + 双后端测试，通过后自动构建 `linux/amd64`、`linux/arm64` 镜像并推送至 `ghcr.io/<owner>/<repo>:latest`。首次构建后需在 GitHub → 仓库 → Packages 将镜像设为 **Public**，外部即可直接拉取。
 
 ## 📜 许可证
 

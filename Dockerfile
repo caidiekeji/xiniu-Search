@@ -1,6 +1,10 @@
-# xiniubot 搜索引擎 - 应用镜像
-# 基于 Docker 构建 (GitHub Actions 自动打包并推送至 ghcr.io)
+# xiniubot 搜索引擎 - 单镜像 (内置 Meilisearch)
+# 一个镜像 = 完整系统: 内置 meilisearch(7700) + 搜索服务(5050) + 管理后台(8081)
+# 多架构构建: buildx 自动注入 TARGETARCH (amd64 / arm64)
 FROM python:3.12-slim
+
+ARG TARGETARCH
+ARG MEILI_VERSION=1.53.1
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -10,14 +14,23 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# 先装依赖, 利用构建缓存
+# 1. 下载并安装 Meilisearch 社区版静态二进制 (按架构: amd64 / arm64 -> aarch64)
+RUN set -eux; \
+    if [ "$TARGETARCH" = "arm64" ]; then MEILI_ARCH=aarch64; else MEILI_ARCH=amd64; fi; \
+    apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && curl -fsSL "https://github.com/meilisearch/meilisearch/releases/download/v${MEILI_VERSION}/meilisearch-linux-${MEILI_ARCH}" -o /usr/local/bin/meilisearch \
+    && chmod +x /usr/local/bin/meilisearch \
+    && apt-get purge -y --auto-remove curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. 安装 Python 依赖 (利用构建缓存)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 拷贝项目代码 (运行时数据由 docker-compose 卷挂载到 /app/data)
+# 3. 拷贝项目代码 (运行时数据由卷挂载到 /app/data)
 COPY . .
 
-# 容器入口: 启动 搜索服务(5050) + 管理后台(8081)
-# 当 XINIU_SEARCH_BACKEND=meili 时, 入口会先等待 Meilisearch 就绪
-EXPOSE 5050 8081
+# 单镜像: 内置 meili(7700) + 搜索服务(5050) + 管理后台(8081)
+EXPOSE 5050 8081 7700
 CMD ["sh", "/app/entrypoint.sh"]

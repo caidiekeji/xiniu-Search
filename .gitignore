@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 运行时数据
+data/
+meili_data/
+
+# 本地下载的二进制 (Windows 单文件方案已废弃)
+meilisearch/
+
+# 日志
+*.log
+
+# 环境
+.env
+
+# 测试输出
+tests/_pro_out.txt

@@ -1,0 +1,37 @@
+# xiniubot - Docker 编排
+# 用法: docker compose up -d --build
+# 可选: 在项目根创建 .env 覆盖 MEILI_MASTER_KEY
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.53.1
+    container_name: xiniubot-meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-xiniubot-change-me-master-key}
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_DB_PATH: /meili_data
+    volumes:
+      - meili_data:/meili_data
+
+  app:
+    build: .
+    container_name: xiniubot-app
+    restart: unless-stopped
+    depends_on:
+      - meilisearch
+    ports:
+      - "5050:5050"   # 搜索服务: 宿主机 5050 -> 容器内 5050
+      - "8081:8081"   # 管理后台: 宿主机 8081 -> 容器内 8081
+    environment:
+      XINIU_SEARCH_BACKEND: meili
+      MEILI_HOST: http://meilisearch:7700
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-xiniubot-change-me-master-key}
+    volumes:
+      - xiniubot_data:/app/data
+
+volumes:
+  meili_data:
+  xiniubot_data:

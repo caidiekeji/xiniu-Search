@@ -1,0 +1,13 @@
+# 构建上下文排除: 运行时数据 / 本地环境 / VCS
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.log
+data
+meili_data
+tests/_pro_out.txt
+.git
+.gitignore
+.gitattributes

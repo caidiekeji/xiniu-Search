@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>xiniubot 管理后台</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+
+<!-- ═══ 登录页 ═══ -->
+<div id="login-view" class="login-view" {% if not (need_login or login_error) %}style="display:none"{% endif %}>
+  <form class="login-card" method="post" action="{{ url_for('login', next=request.args.get('next')) }}">
+    <div class="login-logo">xiniubot</div>
+    <div class="login-sub">搜索引擎 · 管理控制台</div>
+    {% if login_error %}<div class="login-error">{{ login_error }}</div>{% endif %}
+    <input type="password" name="password" placeholder="管理密码" autofocus required>
+    <button type="submit" class="btn btn-primary btn-block">登 录</button>
+    <div class="login-hint">密码默认由系统生成, 首次启动时打印在控制台</div>
+  </form>
+</div>
+
+<!-- ═══ 主控制台 ═══ -->
+<div id="app-view" {% if need_login or login_error %}style="display:none"{% endif %}>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">x</span>
+      <span class="brand-name">xiniubot</span>
+      <span class="brand-sub">管理控制台</span>
+    </div>
+    <nav class="nav" id="nav">
+      <a class="nav-item active" data-view="dashboard" href="#dashboard">仪表盘</a>
+      <a class="nav-item" data-view="control" href="#control">爬虫控制</a>
+      <a class="nav-item" data-view="seeds" href="#seeds">种子管理</a>
+      <a class="nav-item" data-view="queue" href="#queue">队列监控</a>
+      <a class="nav-item" data-view="index" href="#index">索引管理</a>
+      <a class="nav-item" data-view="history" href="#history">任务历史</a>
+      <a class="nav-item" data-view="logs" href="#logs">系统日志</a>
+    </nav>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="/" target="_blank">打开搜索页 ↗</a>
+      <a class="nav-item" href="/admin/logout">退出登录</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="page-title" id="page-title">仪表盘</div>
+      <div class="topbar-right">
+        <span class="crawler-status" id="top-status"><i class="dot"></i> 状态未知</span>
+        <span class="top-clock" id="top-clock">--:--:--</span>
+      </div>
+    </header>
+
+    <section class="content" id="content"></section>
+  </main>
+</div>
+
+<script src="{{ url_for('static', filename='admin.js') }}"></script>
+</body>
+</html>
